@@ -111,7 +111,7 @@ Synapse/
 │   │       ├── registry.py         # CommandRegistry
 │   │       ├── global_cmds.py      # help, connect, disconnect, sessions, search, exit
 │   │       ├── module_cmds.py      # use, set, unset, show, run, back, info
-│   │       └── session_cmds.py     # tools, resources, prompts, call, read
+│   │       └── session_cmds.py     # tools, resources, prompts, call, read (resource by URI)
 │   │
 │   └── utils/
 │       ├── __init__.py
@@ -245,7 +245,7 @@ Sits above ConnectionManager. Tracks the "active session" — which connection c
 
 - `active` property -> current `ManagedConnection`
 - `switch_to(name_or_id)` -> change active session
-- `call_tool()`, `list_tools()`, `list_resources()`, etc. — delegate to active or specified session
+- `call_tool()`, `list_tools()`, `list_resources()`, `read_resource()`, etc. — delegate to active or specified session
 
 ### Models (`app/core/models/`)
 
@@ -326,6 +326,8 @@ class BaseModule(ABC):
 
 **Discovery**: Built-in modules found by walking `app.modules.*` subpackages. External modules register via `pyproject.toml` entry points under `synapse.modules`.
 
+**Search**: The `search` command performs case-insensitive substring matching against module names and descriptions.
+
 **MVP modules**:
 - `enumerate/tools` — list tools across sessions
 - `enumerate/resources` — list resources
@@ -364,8 +366,7 @@ synapse (enumerate/tools) [mcp-github] >     # in module, active session
 | Command | Context | Description |
 |---------|---------|-------------|
 | `help [cmd]` | Global | Show help |
-| `banner` | Global | Re-display ASCII banner |
-| `connect <name> <transport> [opts]` | Global | Establish MCP connection |
+| `connect <name> [transport] [opts]` | Global | Connect by profile name or ad-hoc |
 | `disconnect <name>` | Global | Close connection |
 | `sessions` | Global | List active connections |
 | `sessions -i <id>` | Global | Switch active session |
@@ -383,12 +384,17 @@ synapse (enumerate/tools) [mcp-github] >     # in module, active session
 | `prompts [session]` | Any | List prompts |
 | `call <tool> [json]` | Any | Invoke a tool directly |
 | `read <uri>` | Any | Read a resource |
-| `history` | Global | Command history |
-| `export <fmt> <file>` | Any | Export results |
 | `exit` / `quit` | Global | Exit |
 
 ### Connect Command Examples
 
+Profile-based (loads from `~/.synapse/config.toml`):
+```
+synapse > connect github                  # matches [servers.github] in config
+synapse > connect corp                    # matches [servers.corp] — triggers OAuth2/SSO flow
+```
+
+Ad-hoc (inline args, no config entry needed):
 ```
 synapse > connect github stdio --command npx --args @modelcontextprotocol/server-github --auth pat --token env:GITHUB_TOKEN
 synapse > connect remote http --url https://mcp.example.com --auth api-key --key sk-abc123
@@ -396,13 +402,15 @@ synapse > connect corp http --url https://mcp-gateway.corp.com --auth oauth2
 synapse > connect local stdio --command python --args -m my_mcp_server
 ```
 
+When only a name is provided, `connect` looks up `[servers.<name>]` in the TOML config. If no profile matches and no transport is given, it fails with a helpful message listing available profiles.
+
 ---
 
 ## Dependencies
 
 | Package | Purpose |
 |---------|---------|
-| `mcp>=1.20` | Official MCP Python SDK (ClientSession, transports, JSON-RPC) |
+| `mcp>=1.26,<2` | Official MCP Python SDK (ClientSession, transports, JSON-RPC) |
 | `prompt_toolkit>=3.0` | REPL: async input, tab completion, history, key bindings |
 | `rich>=13.0` | Terminal formatting: tables, panels, syntax highlighting |
 | `python-dotenv` | .env file loading for secrets |
