@@ -1,0 +1,27 @@
+#!/usr/bin/env python3
+"""Synapse - MCP Interaction Framework for Security Professionals"""
+
+import argparse
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        prog="synapse",
+        description="Synapse: MCP interaction framework for security professionals",
+    )
+    parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose output")
+    parser.add_argument("--no-banner", action="store_true", help="Skip the ASCII banner on startup")
+    parser.add_argument("--proxy", default=None, help="HTTP proxy URL (e.g. http://127.0.0.1:8080 for Burp Suite)")
+    parser.add_argument(
+        "--no-verify-ssl", action="store_true", help="Disable SSL verification (for proxy TLS interception)"
+    )
+    args = parser.parse_args()
+
+    from app.main import Synapse
+
+    synapse = Synapse(
+        verbose=args.verbose,
+        show_banner=not args.no_banner,
+        proxy_url=args.proxy,
+        verify_ssl=not args.no_verify_ssl,
+    )
+    synapse.run()

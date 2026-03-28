@@ -1,0 +1,1 @@
+"""Auth credential data models."""

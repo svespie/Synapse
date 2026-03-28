@@ -1,0 +1,1 @@
+"""Synapse exception hierarchy."""
